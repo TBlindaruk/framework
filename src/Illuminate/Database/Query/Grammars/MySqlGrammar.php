@@ -3,7 +3,6 @@
 namespace Illuminate\Database\Query\Grammars;
 
 use Illuminate\Support\Arr;
-use Illuminate\Support\Str;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\JsonExpression;
 
@@ -76,7 +75,7 @@ class MySqlGrammar extends Grammar
      */
     protected function compileJsonLength($column, $operator, $value)
     {
-        list($field, $path) = $this->wrapJsonFieldAndPath($column);
+        [$field, $path] = $this->wrapJsonFieldAndPath($column);
 
         return 'json_length('.$field.$path.') '.$operator.' '.$value;
     }
@@ -196,13 +195,9 @@ class MySqlGrammar extends Grammar
      */
     protected function compileJsonUpdateColumn($key, JsonExpression $value)
     {
-        $path = explode('->', $key);
+        [$field, $path] = $this->wrapJsonFieldAndPath($key);
 
-        $field = $this->wrapValue(array_shift($path));
-
-        $accessor = "'$.\"".implode('"."', $path)."\"'";
-
-        return "{$field} = json_set({$field}, {$accessor}, {$value->getValue()})";
+        return "{$field} = json_set({$field}{$path}, {$value->getValue()})";
     }
 
     /**
@@ -217,8 +212,7 @@ class MySqlGrammar extends Grammar
     public function prepareBindingsForUpdate(array $bindings, array $values)
     {
         $values = collect($values)->reject(function ($value, $column) {
-            return $this->isJsonSelector($column) &&
-                in_array(gettype($value), ['boolean', 'integer', 'double']);
+            return $this->isJsonSelector($column) && is_bool($value);
         })->all();
 
         return parent::prepareBindingsForUpdate($bindings, $values);
@@ -319,16 +313,8 @@ class MySqlGrammar extends Grammar
      */
     protected function wrapJsonSelector($value)
     {
-        $delimiter = Str::contains($value, '->>') ? '->>' : '->';
+        list($field, $path) = $this->wrapJsonFieldAndPath($value);
 
-        list($field, $path) = $this->wrapJsonFieldAndPath($value, $delimiter);
-
-        $selector = 'json_extract('.$field.$path.')';
-
-        if ($delimiter === '->>') {
-            $selector = 'json_unquote('.$selector.')';
-        }
-
-        return $selector;
+        return 'json_unquote(json_extract('.$field.$path.'))';
     }
 }

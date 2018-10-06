@@ -2,6 +2,7 @@
 
 namespace Illuminate\Tests\Filesystem;
 
+use SplFileInfo;
 use Mockery as m;
 use PHPUnit\Framework\TestCase;
 use League\Flysystem\Adapter\Ftp;
@@ -47,7 +48,8 @@ class FilesystemTest extends TestCase
         $files = new Filesystem;
         $files->chmod($this->tempDir.'/file.txt', 0755);
         $filePermission = substr(sprintf('%o', fileperms($this->tempDir.'/file.txt')), -4);
-        $this->assertEquals('0755', $filePermission);
+        $expectedPermissions = DIRECTORY_SEPARATOR == '\\' ? '0666' : '0755';
+        $this->assertEquals($expectedPermissions, $filePermission);
     }
 
     public function testGetChmod()
@@ -56,8 +58,9 @@ class FilesystemTest extends TestCase
         chmod($this->tempDir.'/file.txt', 0755);
 
         $files = new Filesystem;
-        $filePermisson = $files->chmod($this->tempDir.'/file.txt');
-        $this->assertEquals('0755', $filePermisson);
+        $filePermission = $files->chmod($this->tempDir.'/file.txt');
+        $expectedPermissions = DIRECTORY_SEPARATOR == '\\' ? '0666' : '0755';
+        $this->assertEquals($expectedPermissions, $filePermission);
     }
 
     public function testDeleteRemovesFiles()
@@ -137,8 +140,8 @@ class FilesystemTest extends TestCase
         mkdir($this->tempDir.'/foo/bar');
         $files = new Filesystem;
         $results = $files->files($this->tempDir.'/foo');
-        $this->assertInstanceOf('SplFileInfo', $results[0]);
-        $this->assertInstanceOf('SplFileInfo', $results[1]);
+        $this->assertInstanceOf(SplFileInfo::class, $results[0]);
+        $this->assertInstanceOf(SplFileInfo::class, $results[1]);
         unset($files);
     }
 
